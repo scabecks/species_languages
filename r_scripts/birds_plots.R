@@ -131,12 +131,12 @@ no_classes = 4
 # create 4 buckets for species richness
 quantiles_sp = df %>%
   pull(n_sp) %>%
-  quantile(probs = seq(0, 1, length.out = no_classes))
+  quantile(probs = seq(0, 1, length.out = no_classes + 1))
 
 # create 4 buckets for languages
 quantiles_lang = df %>%
   pull(avg_lang) %>%
-  quantile(probs = seq(0, 1, length.out = no_classes))
+  quantile(probs = seq(0, 1, length.out = no_classes + 1))
 
 # create color scale that encodes two variables; purples for species and green
 # for languages - the special notation with gather is for readibility reasons
