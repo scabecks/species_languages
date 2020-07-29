@@ -1,21 +1,19 @@
 library(tidyverse)
-library(RPostgreSQL)
 library(sf)
 library(viridis)
 library(cowplot)
 library(extrafont)
 
 # Read in some data ------------------------------------------------------------
-conn = dbConnect("PostgreSQL",dbname='pablo') 
-pu_sf = st_read(conn, "pu_by_country") #read from pg table
+pu_sf = read_sf(file.choose()) # read in spatial data from file
 pu = pu_sf %>%
   select(gid, adm0_a3) %>%
   st_set_geometry(NULL) %>%
   as_tibble() %>%
   mutate(gid=as.integer(gid))
 
-sp = read_csv("tabular_data/pablo_birds.csv",col_types = 'iiiii')
-lan_Count  = read_csv("tabular_data/Official_Languages_by_Country.csv", col_types = cols(adm0_a3='c',Country='c',.default = 'i')) # call table of languages by country
+sp = read_csv(file.choose(),col_types = c(.default='i'))
+lan_Count  = read_csv(file.choose(), col_types = cols(adm0_a3='c',Country='c',.default = 'i')) # call table of languages by country
 
 # Distinct PU/sisid
 sp_unique = sp %>%
@@ -25,7 +23,7 @@ sp_unique = sp %>%
 sp_rich = sp %>%
   group_by(gid) %>% 
   summarise(n_sp = n_distinct(sisid))
-#write_csv(sp_rich,"tabular_data/sp_rich.csv")
+#write_csv(sp_rich,"Desktop/sp_rich.csv")
 
 # Number of countries per species
 sp_country = sp %>%
@@ -60,22 +58,19 @@ pu_avg_lang_count_by_sp = sp_unique %>%
   left_join(sp_unique_lang_count, by = 'sisid') %>%
   group_by(gid) %>%
   summarise(avg_lang=mean(n_langs))
-#write_csv(pu_avg_lang_count_by_sp, "tabular_data/pu_avg.csv")
+#write_csv(pu_avg_lang_count_by_sp, "Desktop/pu_avg.csv")
 
 # Merge needed attributes all together -----------------------------------------
 df = pu_sf %>%
   left_join(sp_rich,by = 'gid') %>%
   left_join(pu_avg_lang_count_by_sp, by = 'gid') %>%
-  select(gid,adm0_a3,n_sp,avg_lang) %>% 
+  select(gid,n_sp,avg_lang) %>% 
   replace_na(list(n_sp=0, avg_lang=0))
-
-write_sf(df, "pu_data.gpkg") # save output to geopackage
 
 # Create Bivariate Map ---------------------------------------------------------
 default_font_family = 'Open Sans'
 default_font_color = '#484242'
 default_background_color = '#F5F5F2'
-default_caption = 'I am a map.'
 
 theme_map <- function(...) {
   theme_minimal() +
@@ -95,7 +90,7 @@ theme_map <- function(...) {
                                    color = NA),
     panel.background = element_rect(fill = default_background_color,
                                     color = NA),
-    legend.background = element_rect(fill = alpha(default_background_color,1),
+    legend.background = element_rect(fill = default_background_color,
                                      color = NA),
     # borders and margins
     plot.margin = unit(c(.5, .5, .2, .5), "cm"),
@@ -204,7 +199,7 @@ map = ggplot(
          y = NULL,
          title = "Avian Richness vs. Languages Spoken",
          subtitle = "Birdlife Species Range and Average (Official) Spoken Languages per Species' Range",
-         caption = default_caption) +
+         caption = "I am a map.") +
   # add the theme
   theme_map()
 
@@ -235,9 +230,6 @@ legend = ggplot() +
 
 ggdraw() +
   draw_plot(map, 0, 0, 1, 1) +
-  draw_plot(legend, 0.0001, 0.1, 0.35, 0.35)
+  draw_plot(legend, 0.1, 0.05, 0.35, 0.35)
 
-ggsave("figures/birds_fig1.png", dpi = 600)
-
-#Trim off any unwanted margins
-system("convert figures/birds_fig1.png -trim figures/birds_fig1_trim.png")
+ggsave(file.create(),dpi = 300)

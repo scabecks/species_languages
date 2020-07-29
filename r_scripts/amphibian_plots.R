@@ -14,38 +14,38 @@ pu = pu_sf %>%
   as_tibble() %>%
   mutate(gid=as.integer(gid))
 
-sp = read_csv("tabular_data/pablo_birds.csv",col_types = 'iiiii')
+sp = read_csv("tabular_data/pablo_amphibians.csv",col_types = 'iiiii')
 lan_Count  = read_csv("tabular_data/Official_Languages_by_Country.csv", col_types = cols(adm0_a3='c',Country='c',.default = 'i')) # call table of languages by country
 
-# Distinct PU/sisid
+# Distinct PU/id_no
 sp_unique = sp %>%
-  distinct(gid,sisid)
+  distinct(gid,id_no)
 
 #Species richness per PU
 sp_rich = sp %>%
   group_by(gid) %>% 
-  summarise(n_sp = n_distinct(sisid))
+  summarise(n_sp = n_distinct(id_no))
 #write_csv(sp_rich,"tabular_data/sp_rich.csv")
 
 # Number of countries per species
 sp_country = sp %>%
   left_join(pu, by = 'gid') %>%
-  group_by(sisid) %>%
+  group_by(id_no) %>%
   summarise(n_cnt = n_distinct(adm0_a3))
 
-#Languages by sisid/country
+#Languages by id_no/country
 sp_unique_lang = sp_unique %>%
   left_join(pu, by='gid') %>%
-  distinct(adm0_a3, sisid) %>%
-  arrange(sisid) %>%
+  distinct(adm0_a3, id_no) %>%
+  arrange(id_no) %>%
   left_join(lan_Count, by = 'adm0_a3') %>%
-  pivot_longer(cols = -c(sisid, adm0_a3, Country),
+  pivot_longer(cols = -c(id_no, adm0_a3, Country),
                names_to = 'lang') %>%
   filter(value != 0)
 
-# Count of  distinct languages by sisid
+# Count of  distinct languages by id_no
 sp_unique_lang_count = sp_unique_lang %>%
-  group_by(sisid) %>%
+  group_by(id_no) %>%
   summarise(n_langs=n_distinct(lang))
 
 # Count distinct number of languages per PU
@@ -57,7 +57,7 @@ pu_lang_count = sp_unique_lang %>%
                               
 # Mean languages per species that intersect with PU 
 pu_avg_lang_count_by_sp = sp_unique %>%
-  left_join(sp_unique_lang_count, by = 'sisid') %>%
+  left_join(sp_unique_lang_count, by = 'id_no') %>%
   group_by(gid) %>%
   summarise(avg_lang=mean(n_langs))
 #write_csv(pu_avg_lang_count_by_sp, "tabular_data/pu_avg.csv")
@@ -202,8 +202,8 @@ map = ggplot(
   # add titles
   labs(x = NULL,
          y = NULL,
-         title = "Avian Richness vs. Languages Spoken",
-         subtitle = "Birdlife Species Range and Average (Official) Spoken Languages per Species' Range",
+         title = "Amphibian Richness vs. Languages Spoken",
+         subtitle = "IUCN Amphibian Ranges and Average (Official) Spoken Languages per Species' Range",
          caption = default_caption) +
   # add the theme
   theme_map()
@@ -237,7 +237,7 @@ ggdraw() +
   draw_plot(map, 0, 0, 1, 1) +
   draw_plot(legend, 0.0001, 0.1, 0.35, 0.35)
 
-ggsave("figures/birds_fig1.png", dpi = 600)
+ggsave("figures/amphibians_fig1.png", dpi = 600)
 
 #Trim off any unwanted margins
-system("convert figures/birds_fig1.png -trim figures/birds_fig1_trim.png")
+system("convert figures/amphibians_fig1.png -trim figures/amphibians_fig1_trim.png")
