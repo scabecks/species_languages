@@ -14,7 +14,7 @@ pu = pu_sf %>%
   as_tibble() %>%
   mutate(gid=as.integer(gid))
 
-sp = read_csv("tabular_data/pablo_birds.csv",col_types = 'iiiii')
+sp = read_csv("tabular_data/SP_by_pu_Country_Final_P_O_S_Removed.csv",col_types = 'iiiiic')
 lan_Count  = read_csv("tabular_data/Official_Languages_by_Country.csv", col_types = cols(adm0_a3='c',Country='c',.default = 'i')) # call table of languages by country
 
 # Distinct PU/sisid
@@ -31,7 +31,7 @@ sp_rich = sp %>%
 sp_country = sp %>%
   left_join(pu, by = 'gid') %>%
   group_by(sisid) %>%
-  summarise(n_cnt = n_distinct(adm0_a3))
+  summarise(n_cnt = n_distinct(adm0_a3.x))
 
 #Languages by sisid/country
 sp_unique_lang = sp_unique %>%
@@ -59,7 +59,7 @@ pu_lang_count = sp_unique_lang %>%
 pu_avg_lang_count_by_sp = sp_unique %>%
   left_join(sp_unique_lang_count, by = 'sisid') %>%
   group_by(gid) %>%
-  summarise(avg_lang=mean(n_langs))
+  summarise(avg_lang=median(n_langs))
 #write_csv(pu_avg_lang_count_by_sp, "tabular_data/pu_avg.csv")
 
 # Merge needed attributes all together -----------------------------------------
@@ -69,13 +69,13 @@ df = pu_sf %>%
   select(gid,adm0_a3,n_sp,avg_lang) %>% 
   replace_na(list(n_sp=0, avg_lang=0))
 
-write_sf(df, "pu_data.gpkg") # save output to geopackage
+#write_sf(df, "pu_data.gpkg") # save output to geopackage
 
 # Create Bivariate Map ---------------------------------------------------------
 default_font_family = 'Open Sans'
 default_font_color = '#484242'
 default_background_color = '#F5F5F2'
-default_caption = 'I am a map.'
+default_caption = 'I am a map. Love me.'
 
 theme_map <- function(...) {
   theme_minimal() +
@@ -184,10 +184,15 @@ df = df %>%
   # based on the sp and lang value
   left_join(bivariate_color_scale, by = "group")
 
+moll_earth = st_sfc(st_polygon(x = list(matrix(c(-179.999999,89.999999,179.999999,89.999999,179.999999,-89.999999,-179.999999,-89.999999,-179.999999,89.999999), ncol = 2, byrow = T)), dim = 'XY'),crs = 4326) %>%
+  st_segmentize(units::set_units(1, Degree)) %>% # Needed so that the polygon projects nicely to Mollweide
+  st_transform('+proj=moll')
+
 map = ggplot(
   # use the same dataset as before
   data = df
   ) +
+  geom_sf(data = moll_earth, fill=alpha('white',0), colour=alpha('grey',0.5), size = 0.2) +
   geom_sf(
     aes(
       fill = fill
@@ -237,7 +242,7 @@ ggdraw() +
   draw_plot(map, 0, 0, 1, 1) +
   draw_plot(legend, 0.0001, 0.1, 0.35, 0.35)
 
-ggsave("figures/birds_fig1.png", dpi = 600)
+ggsave("figures/birds_median_fig1.png", dpi = 600)
 
 #Trim off any unwanted margins
-system("convert figures/birds_fig1.png -trim figures/birds_fig1_trim.png")
+system("convert figures/birds_median_fig1.png -trim figures/birds_median_fig1_trim.png")

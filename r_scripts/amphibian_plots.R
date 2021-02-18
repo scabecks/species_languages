@@ -6,8 +6,9 @@ library(cowplot)
 library(extrafont)
 
 # Read in some data ------------------------------------------------------------
-conn = dbConnect("PostgreSQL",dbname='pablo') 
-pu_sf = st_read(conn, "pu_by_country") #read from pg table
+#conn = dbConnect("PostgreSQL",dbname='pablo') 
+#pu_sf = st_read(conn, "pu_by_country") #read from pg table
+pu_sf = read_sf("spatial_data/pu_by_country.shp")
 pu = pu_sf %>%
   select(gid, adm0_a3) %>%
   st_set_geometry(NULL) %>%
@@ -15,6 +16,10 @@ pu = pu_sf %>%
   mutate(gid=as.integer(gid))
 
 sp = read_csv("tabular_data/pablo_amphibians.csv",col_types = 'iiiii')
+sp_end = read_csv("tabular_data/Endangered_Amphibians.csv",col_types = 'iciiiciccccccccccccccclllnn')
+sp = sp %>% left_join(sp_end, by = 'id_no') %>%
+  filter(category %in% c('CR','EN','VU')) %>%
+  select(gid, id_no, presence=presence.x, origin=origin.x, seasonal=seasonal.x)
 lan_Count  = read_csv("tabular_data/Official_Languages_by_Country.csv", col_types = cols(adm0_a3='c',Country='c',.default = 'i')) # call table of languages by country
 
 # Distinct PU/id_no
@@ -74,8 +79,8 @@ write_sf(df, "pu_data.gpkg") # save output to geopackage
 # Create Bivariate Map ---------------------------------------------------------
 default_font_family = 'Open Sans'
 default_font_color = '#484242'
-default_background_color = '#F5F5F2'
-default_caption = 'I am a map.'
+default_background_color = '#ffffff'
+#default_caption = 'I am a map.'
 
 theme_map <- function(...) {
   theme_minimal() +
@@ -184,10 +189,16 @@ df = df %>%
   # based on the sp and lang value
   left_join(bivariate_color_scale, by = "group")
 
+moll = st_read("~/Dropbox/GIS/earth_outline_mollweide.gpkg")
+
 map = ggplot(
   # use the same dataset as before
   data = df
   ) +
+  # Add a line indicating the extent of the planet
+  geom_sf(data = moll,
+          fill = 'white',
+          size = 0.4) +
   geom_sf(
     aes(
       fill = fill
@@ -203,8 +214,7 @@ map = ggplot(
   labs(x = NULL,
          y = NULL,
          title = "Amphibian Richness vs. Languages Spoken",
-         subtitle = "IUCN Amphibian Ranges and Average (Official) Spoken Languages per Species' Range",
-         caption = default_caption) +
+         subtitle = "IUCN Amphibian Ranges and Average (Official) Spoken Languages per Species' Range") +
   # add the theme
   theme_map()
 
@@ -237,7 +247,7 @@ ggdraw() +
   draw_plot(map, 0, 0, 1, 1) +
   draw_plot(legend, 0.0001, 0.1, 0.35, 0.35)
 
-ggsave("figures/amphibians_fig1.png", dpi = 600)
+ggsave("figures/amphibians_endg_fig1.png", dpi = 600)
 
 #Trim off any unwanted margins
 system("convert figures/amphibians_fig1.png -trim figures/amphibians_fig1_trim.png")
